@@ -6,12 +6,12 @@ module.exports = {
 		FACEBOOK: {
 			CLIENT_ID: '650118635518017',
 			CLIENT_SECRET: 'c048e4109fcb63d0fe602d0976d6fef9',
-			CALLBACK_URL: 'https://my-caro-online-api.herokuapp.com/user/facebook/callback'
+			CALLBACK_URL: process.env.FACEBOOK_CALLBACK_URL
 		},
 		GOOGLE: {
 			CLIENT_ID: '813535094121-q30ebqjs5cblqim8vilslkudsghjh3rf.apps.googleusercontent.com',
 			CLIENT_SECRET: 'ls6UXWvxJ4KIrtPRLNihxM2U',
-			CALLBACK_URL: '/user/google/callback'
+			CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL
 		}
 	},
 	SERVER: {

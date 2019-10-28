@@ -3,8 +3,24 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www",
-    "debug": "nodemon ./bin/www"
+    "start": "better-npm-run start",
+    "debug": "better-npm-run debug"
+  },
+  "betterScripts": {
+    "start": {
+      "command": "node ./bin/www",
+      "env": {
+        "FACEBOOK_CALLBACK_URL": "https://my-caro-online-api.herokuapp.com/user/facebook/callback",
+        "GOOGLE_CALLBACK_URL": "https://my-caro-online-api.herokuapp.com/user/google/callback"
+      }
+    },
+    "debug": {
+      "command": "nodemon ./bin/www",
+      "env": {
+        "FACEBOOK_CALLBACK_URL": "localhost:3001/user/facebook/callback",
+        "GOOGLE_CALLBACK_URL": "localhost:3001/user/google/callback"
+      }
+    }
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
@@ -26,5 +42,8 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0"
+  },
+  "devDependencies": {
+    "better-npm-run": "^0.1.1"
   }
 }
