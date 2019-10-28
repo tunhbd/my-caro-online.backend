@@ -128,7 +128,7 @@ const useFacebookStrategy = () => {
     clientID: FACEBOOK.CLIENT_ID,
     clientSecret: FACEBOOK.CLIENT_SECRET,
     callbackURL: FACEBOOK.CALLBACK_URL,
-    profileFields: ['id', 'displayName', 'photos', 'emails', 'gender', 'birthday'],
+    profileFields: ['id', 'displayName', 'photos', 'emails'],
   },
     async function (accessToken, refreshToken, profile, cb) {
       userModel.findOne({
@@ -148,12 +148,6 @@ const useFacebookStrategy = () => {
             facebook_id: profile.id,
             display_name: profile.displayName,
             avatar: profile.photos[0] ? profile.photos[0].value : null,
-            gender: profile.gender === 'male'
-              ? 1
-              : profile.gender === 'female'
-                ? 0
-                : 2,
-            birthday: profile.json.birthday,
             email: profile.emails[0] ? profile.emails[0].value : null
           }
 

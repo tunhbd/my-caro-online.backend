@@ -28,7 +28,9 @@ router.post('/login', function (req, res, next) {
   })(req, res, next);
 });
 
-router.get('/facebook', passport.authenticate('facebook', { scope: ['email', 'user_gender', 'user_birthday'] }));
+router.get('/facebook', passport.authenticate('facebook', {
+  scope: ['email']
+}));
 
 router.get(
   '/facebook/callback',
