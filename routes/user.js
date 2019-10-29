@@ -85,6 +85,7 @@ router.get(
   });
 
 router.post('/register', (req, res) => {
+  console.log('body', req.body);
   userModel
     .addNew(req.body)
     .then(ret => {
