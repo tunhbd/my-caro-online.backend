@@ -42,6 +42,10 @@ const useJwtStrategy = () => {
         }
 
         return cb(null, null);
+      })
+      .catch(err => {
+        console.log('err', err);
+        cb(new CustomError(500, err), null)
       });
   }));
 };
