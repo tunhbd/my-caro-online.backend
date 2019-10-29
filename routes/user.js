@@ -42,12 +42,18 @@ router.get(
     //   res.status(200).json(new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) }));
     // }
     res.send(`
-      <script>
-        alert("123"); 
-        function onLoad(){console.log("hoho");window.close();}
-      </script>
-      <body onload="onLoad()"></body>
-      `)
+    <html>
+      <body onload="onLoad()">
+        <script>
+          alert("123"); 
+          function onLoad(){
+            console.log("hoho");
+            window.close();
+          }
+        </script>
+      </body>
+    </html>
+    `)
   });
 
 router.get('/google', passport.authenticate('google', {
