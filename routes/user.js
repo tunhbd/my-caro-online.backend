@@ -47,7 +47,7 @@ router.get(
         <script>
           alert("123"); 
           function onLoad(){
-            console.log("hoho");
+            console.log("hoho", window.opener);
             window.close();
           }
         </script>
