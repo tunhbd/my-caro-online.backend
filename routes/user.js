@@ -11,16 +11,18 @@ const { CustomError } = require('../defines/errors');
 router.post('/login', function (req, res, next) {
   passport.authenticate('local', { session: false }, function (err, user, info) {
     if (err) {
-      return res.status(err.code).json(new AuthResponse(err, null));
+      console.log('login error', err);
+      return res.status(200).json(new AuthResponse(err, { token: null }));
     }
 
     if (!user) {
-      return res.status(200).json(new AuthResponse(null, null))
+      return res.status(200).json(new AuthResponse(null, { token: null }))
     }
 
     req.logIn(user, { session: false }, function (err) {
       if (err) {
-        return res.status(400).json(new AuthResponse(new CustomError(500, err), null));
+        console.log('login error', err);
+        return res.status(200).json(new AuthResponse(new CustomError(500, err), { token: null }));
       }
 
       return res.status(200).json(new AuthResponse(null, { token: jwt.sign(user, JWT.SECRET) }));
@@ -85,12 +87,12 @@ router.get(
   });
 
 router.post('/register', (req, res) => {
-  console.log('body', req.body);
   userModel
     .addNew(req.body)
     .then(ret => {
       if (ret.error) {
-        res.status(ret.error.code).json(new AuthResponse(null, {
+        console.log('register error', ret.error);
+        res.status(200).json(new AuthResponse(ret.error, {
           success: false,
           message: 'Process failed'
         }));
@@ -99,7 +101,10 @@ router.post('/register', (req, res) => {
         res.status(200).json(new AuthResponse(null, { success: true, message: 'Register Successfully' }));
       }
     })
-    .catch(err => res.status(500).json(new AuthResponse(new CustomError(500, err), null)));
+    .catch(err => {
+      console.log('register error', err);
+      res.status(200).json(new AuthResponse(new CustomError(500, err), null))
+    });
 });
 
 router.get(
@@ -110,6 +115,7 @@ router.get(
       .findOne({ username: req.user.username })
       .then(ret => {
         if (ret.error) {
+          console.log('profile error', ret.error);
           res.status(ret.error.code).json(new AuthResponse(ret.error, null));
         } else {
           res.status(200).json(new AuthResponse(null, {

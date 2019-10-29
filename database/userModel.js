@@ -26,19 +26,21 @@ const findOne = async conditions => {
 const addNew = async dataObj => {
 	const result = new DBResponse(null, null);
 
-	if (isEmpty(omit(dataObj, COMMON_FIELDS))) {
-		const newData = {
-			...dataObj,
-			password: dataObj.password ? hashPassword(dataObj.password) : null
-		};
+	try {
+		if (isEmpty(omit(dataObj, COMMON_FIELDS))) {
+			const newData = {
+				...dataObj,
+				password: dataObj.password ? hashPassword(dataObj.password) : null
+			};
 
-		await conn('user')
-			.insert(newData)
-			.then(res => result.error = null)
-			.catch(err => result.error = new CustomError(500, err));
-	} else {
-		result.error = new CustomError(400, 'Bad Request');
-	}
+			await conn('user')
+				.insert(newData)
+				.then(res => result.error = null)
+				.catch(err => result.error = new CustomError(500, err));
+		} else {
+			result.error = new CustomError(400, 'Bad Request');
+		}
+	} catch (err) { console.log(err) };
 
 	return result;
 }

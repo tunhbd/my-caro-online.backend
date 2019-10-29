@@ -9,6 +9,7 @@ const { omit, get } = require('lodash');
 const { JWT, FACEBOOK, GOOGLE } = require('../config').PASSPORT;
 const { userModel } = require('../database');
 const { CustomError } = require('../defines/errors');
+const { hashPassword } = require('../utils/password');
 const NEED_TO_REMOVE_FIELDS_TOKEN = [
   'avatar',
   'gender',
