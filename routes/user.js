@@ -48,7 +48,7 @@ router.get(
     <html>
       <body onload="onLoad()">
         <script>
-          window.opener.postMessage('LOGIN_VIA_SOCIAL', ${JSON.stringify(resData)});
+          window.opener.postMessage(${JSON.stringify({ type: 'LOGIN_VIA_SOCIAL', data: resData })}, '*');
           window.close();
         </script>
       </body>
