@@ -41,11 +41,14 @@ router.get(
     // } else {
     //   res.status(200).json(new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) }));
     // }
+    const resData = req.user
+      ? new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) })
+      : new AuthResponse(null, null)
     res.send(`
     <html>
       <body onload="onLoad()">
         <script>
-          console.log("123");
+          window.opener.postMessage('LOGIN_VIA_SOCIAL', ${JSON.stringify(resData)});
           window.close();
         </script>
       </body>
