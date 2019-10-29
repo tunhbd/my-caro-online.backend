@@ -36,11 +36,6 @@ router.get(
   '/facebook/callback',
   passport.authenticate('facebook'),
   (req, res) => {
-    // if (!req.user) {
-    //   res.status(200).json(new AuthResponse(null, null));
-    // } else {
-    //   res.status(200).json(new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) }));
-    // }
     const resData = req.user
       ? new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) })
       : new AuthResponse(null, null)
@@ -68,11 +63,25 @@ router.get(
   '/google/callback',
   passport.authenticate('google'),
   (req, res) => {
-    if (!req.user) {
-      res.status(200).json(new AuthResponse(null, null));
-    } else {
-      res.status(200).json(new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) }));
-    }
+    // if (!req.user) {
+    //   res.status(200).json(new AuthResponse(null, null));
+    // } else {
+    //   res.status(200).json(new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) }));
+    // }
+
+    const resData = req.user
+      ? new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) })
+      : new AuthResponse(null, null)
+    res.send(`
+    <html>
+      <body onload="onLoad()">
+        <script>
+          window.opener.postMessage(${JSON.stringify({ type: 'LOGIN_VIA_SOCIAL', messageData: resData })}, '*');
+          window.close();
+        </script>
+      </body>
+    </html>
+    `).end();
   });
 
 router.post('/register', (req, res) => {
