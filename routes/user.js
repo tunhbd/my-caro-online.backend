@@ -45,11 +45,8 @@ router.get(
     <html>
       <body onload="onLoad()">
         <script>
-          alert("123"); 
-          function onLoad(){
-            console.log("hoho", window);
-            window.close();
-          }
+          console.log("123");
+          window.close();
         </script>
       </body>
     </html>
