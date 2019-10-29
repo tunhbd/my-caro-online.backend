@@ -38,7 +38,7 @@ const useJwtStrategy = () => {
         }
 
         if (res.data) {
-          return db(null, omit(res.data, NEED_TO_REMOVE_FIELDS_TOKEN));
+          return cb(null, omit(res.data, NEED_TO_REMOVE_FIELDS_TOKEN));
         }
 
         return cb(null, null);
