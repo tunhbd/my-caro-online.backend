@@ -34,14 +34,14 @@ const useJwtStrategy = () => {
       .findOne({ username: jwt_payload.username })
       .then(res => {
         if (res.error) {
-          return done(res.error, null);
+          return cb(res.error, null);
         }
 
         if (res.data) {
-          return done(null, omit(res.data, NEED_TO_REMOVE_FIELDS_TOKEN));
+          return db(null, omit(res.data, NEED_TO_REMOVE_FIELDS_TOKEN));
         }
 
-        return done(null, null);
+        return cb(null, null);
       });
   }));
 };
