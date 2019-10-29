@@ -50,7 +50,7 @@ router.get(
         </script>
       </body>
     </html>
-    `)
+    `).end();
   });
 
 router.get('/google', passport.authenticate('google', {
