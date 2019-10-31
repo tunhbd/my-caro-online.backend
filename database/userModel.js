@@ -43,9 +43,32 @@ const addNew = async dataObj => {
 	} catch (err) { console.log(err) };
 
 	return result;
-}
+};
+
+const updateOne = async (conditionsKey, data) => {
+	const result = new DBResponse(null, null);
+
+	await conn('user')
+		.where(conditionsKey)
+		.update(data)
+		.then(async res => {
+			await findOne(conditionsKey)
+				.then(ret => {
+					if (ret.error) {
+						result.error = ret.error;
+					} else {
+						result.data = ret.data;
+					}
+				})
+				.catch(err => result.error = new CustomError(500, err));
+		})
+		.catch(err => result.error = new CustomError(500, err));
+
+	return result;
+};
 
 module.exports = {
 	findOne,
-	addNew
+	addNew,
+	updateOne
 }

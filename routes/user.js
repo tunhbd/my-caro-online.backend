@@ -7,6 +7,7 @@ const { JWT } = require('../config').PASSPORT;
 const { userModel } = require('../database');
 const { AuthResponse } = require('../defines/responses');
 const { CustomError } = require('../defines/errors');
+const { hashPassword } = require('../utils/password');
 
 router.post('/login', function (req, res, next) {
   passport.authenticate('local', { session: false }, function (err, user, info) {
@@ -145,6 +146,69 @@ router.get(
 
     res.status(200).json(new AuthResponse(null, { authorizated: user ? true : false }));
   }
-)
+);
+
+router.post('/check-exists-username', (req, res) => {
+  const { username } = req.body;
+
+  userModel
+    .findOne({ username })
+    .then(ret => {
+      if (ret.error) {
+        console.log('check exists username error', ret.error);
+        res.status(200).json(new AuthResponse(ret.error, null));
+      }
+
+      if (ret.data) {
+        res.status(200).json(new AuthResponse(null, { exists: true }));
+      } else {
+        res.status(200).json(new AuthResponse(null, { exists: false }));
+      }
+    })
+    .catch(err => {
+      console.log('check exists username error', err);
+      res.status(200).json(new AuthResponse(new CustomError(500, err), null));
+    })
+});
+
+router.post(
+  '/change-password',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    if (!req.user) {
+      res.status(200).json(new AuthResponse(new CustomError(401, 'Unauthorizated'), null));
+    } else {
+      const { password } = req.body;
+      const { username } = req.user;
+
+      if (!password) {
+        return res.status(200).json(new AuthResponse(new CustomError(400, 'Bad request'), null));
+      }
+
+      userModel
+        .updateOne({ username }, { password: hashPassword(password) })
+        .then(ret => {
+          if (ret.error) {
+            console.log('error', ret.error);
+            res.status(200).json(new AuthResponse(ret.error, null));
+          } else {
+            res.status(200).json(new AuthResponse(null, omit(ret.data, ['password'])));
+          }
+        })
+        .catch(err => {
+          res.status(200).json(new AuthResponse(new CustomError(500, err), null));
+        })
+    }
+  }
+);
+
+router.post(
+  '/upload-avatar',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    console.log('file', req.body);
+    res.json({ msg: 'file file' });
+  }
+);
 
 module.exports = router;
