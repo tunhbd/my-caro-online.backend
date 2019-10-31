@@ -9,15 +9,8 @@ const { omit, get } = require('lodash');
 const { JWT, FACEBOOK, GOOGLE } = require('../config').PASSPORT;
 const { userModel } = require('../database');
 const { CustomError } = require('../defines/errors');
+const { NEED_TO_REMOVE_FIELDS_TOKEN } = require('../defines/constants');
 const { hashPassword } = require('../utils/password');
-const NEED_TO_REMOVE_FIELDS_TOKEN = [
-  'avatar',
-  'gender',
-  'email',
-  'birthday',
-  'display_name',
-  'password'
-]
 
 // JWT Strategy
 const useJwtStrategy = () => {
@@ -33,39 +26,19 @@ const useJwtStrategy = () => {
 
     userModel
       .findOne({ username: jwt_payload.username })
-      .then(res => {
-        if (res.error) {
-          return cb(res.error, null);
-        }
-
-        if (res.data) {
-          return cb(null, omit(res.data, NEED_TO_REMOVE_FIELDS_TOKEN));
-        }
-
-        return cb(null, null);
-      });
+      .then(user => cb(null, omit(user, NEED_TO_REMOVE_FIELDS_TOKEN)))
+      .catch(err => cb(err, null));
   }));
 };
 
 // Local Strategy
 const useLocalStrategy = () => {
   passport.use(new LocalStrategy(
-    function (username, password, done) {
+    function (username, password, cb) {
       userModel
         .findOne({ username, password: hashPassword(password) })
-        .then(res => {
-          if (res.error) {
-            return done(res.error, null);
-          }
-          if (res.data) {
-            return done(null, omit(Object.assign({}, res.data), NEED_TO_REMOVE_FIELDS_TOKEN));
-          }
-
-          return done(null, null);
-        })
-        .catch(err => {
-          return done(new CustomError(500, err), null);
-        });
+        .then(user => cb(null, omit(user, NEED_TO_REMOVE_FIELDS_TOKEN)))
+        .catch(err => cb(err, null));
     }
   ));
 };
@@ -79,14 +52,11 @@ const useGoogleStrategy = () => {
     profileFields: ['email', 'birthday', 'gender']
   },
     function (accessToken, refreshToken, profile, cb) {
-      userModel.findOne({ google_id: profile.id })
-        .then(async res => {
-          if (res.error) {
-            return cb(res.error, null);
-          }
-
-          if (res.data) {
-            return cb(null, omit(res.data, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'facebook_id']));
+      userModel
+        .findOne({ google_id: profile.id })
+        .then(user => {
+          if (user) {
+            return cb(null, omit(user, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'facebook_id']));
           }
 
           const newUserData = {
@@ -105,20 +75,12 @@ const useGoogleStrategy = () => {
             email: get(profile, ['emails', 0, 'value'], null)
           }
 
-          await userModel
+          userModel
             .addNew(newUserData)
-            .then(res => {
-              if (!res.error) {
-                return cb(null, omit(newUserData, NEED_TO_REMOVE_FIELDS_TOKEN));
-              }
-
-              return cb(res.error, null);
-            })
-            .catch(err => cb(new CustomError(500, err), null));
+            .then(user => cb(null, omit(user, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'facebook_id'])))
+            .catch(err => cb(err, null));
         })
-        .catch(err => {
-          return cb(new CustomError(500, err), null);
-        });
+        .catch(err => cb(err, null));
     }
   ));
 };
@@ -132,16 +94,13 @@ const useFacebookStrategy = () => {
     profileFields: ['id', 'displayName', 'photos', 'emails'],
   },
     async function (accessToken, refreshToken, profile, cb) {
-      userModel.findOne({
-        facebook_id: profile.id
-      })
-        .then(async res => {
-          if (res.error) {
-            return cb(res.error, null);
-          }
-
-          if (res.data) {
-            return cb(null, omit(res.data, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'google_id']));
+      userModel
+        .findOne({
+          facebook_id: profile.id
+        })
+        .then(user => {
+          if (user) {
+            return cb(null, omit(user, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'google_id']));
           }
 
           const newUserData = {
@@ -152,16 +111,10 @@ const useFacebookStrategy = () => {
             email: profile.emails[0] ? profile.emails[0].value : null
           }
 
-          await userModel
+          userModel
             .addNew(newUserData)
-            .then(res => {
-              if (!res.error) {
-                return cb(null, omit(newUserData, NEED_TO_REMOVE_FIELDS_TOKEN));
-              }
-
-              return cb(res.error, null);
-            })
-            .catch(err => cb(new CustomError(500, err), null));
+            .then(user => cb(null, omit(user, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'google_id'])))
+            .catch(err => cb(err, null));
         })
         .catch(err => cb(new CustomError(500, err), null));
     }

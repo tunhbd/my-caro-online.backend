@@ -1,13 +1,25 @@
 const passport = require('passport');
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
-const { omit } = require('lodash');
+const { omit, hasIn, isEmpty } = require('lodash');
 
 const { JWT } = require('../config').PASSPORT;
 const { userModel } = require('../database');
 const { AuthResponse } = require('../defines/responses');
 const { CustomError } = require('../defines/errors');
+const {
+  NOT_NEED_FIELDS_PROFILE,
+  NEW_USER_FIELDS,
+  UPDATE_USER_FIELDS
+} = require('../defines/constants');
 const { hashPassword } = require('../utils/password');
+const { uploadImageFile } = require('../multer');
+const {
+  GoogleDriveClient,
+  MIME_TYPES,
+  GOOGLE_DRIVE_PERMISSION_ROLE,
+  GOOGLE_DRIVE_PERMISSION_TYPE
+} = require('../modules/google-drive-client/build/src');
 
 router.post('/login', function (req, res, next) {
   passport.authenticate('local', { session: false }, function (err, user, info) {
@@ -66,12 +78,6 @@ router.get(
   '/google/callback',
   passport.authenticate('google'),
   (req, res) => {
-    // if (!req.user) {
-    //   res.status(200).json(new AuthResponse(null, null));
-    // } else {
-    //   res.status(200).json(new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) }));
-    // }
-
     const resData = req.user
       ? new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) })
       : new AuthResponse(null, null)
@@ -88,23 +94,28 @@ router.get(
   });
 
 router.post('/register', (req, res) => {
+  if (
+    !NEW_USER_FIELDS.every(field => hasIn(req.body, field))
+    || !isEmpty(omit(req.body, NEW_USER_FIELDS))
+  ) {
+    return res
+      .status(200)
+      .json(new AuthResponse(new CustomError(400, 'Bad request'), {
+        success: false
+      }));
+  }
+
   userModel
     .addNew(req.body)
-    .then(ret => {
-      if (ret.error) {
-        console.log('register error', ret.error);
-        res.status(200).json(new AuthResponse(ret.error, {
-          success: false,
-          message: 'Process failed'
-        }));
-      }
-      else {
-        res.status(200).json(new AuthResponse(null, { success: true, message: 'Register Successfully' }));
-      }
+    .then(user => {
+      res.status(200).json(new AuthResponse(null, { success: true, message: 'Register Successfully' }));
     })
     .catch(err => {
       console.log('register error', err);
-      res.status(200).json(new AuthResponse(new CustomError(500, err), null))
+      res.status(200).json(new AuthResponse(new CustomError(500, err), {
+        success: false,
+        message: 'Process failed'
+      }))
     });
 });
 
@@ -114,18 +125,35 @@ router.get(
   (req, res) => {
     userModel
       .findOne({ username: req.user.username })
-      .then(ret => {
-        if (ret.error) {
-          console.log('profile error', ret.error);
-          res.status(ret.error.code).json(new AuthResponse(ret.error, null));
-        } else {
-          res.status(200).json(new AuthResponse(null, {
-            profile: omit(ret.data, ['password'])
-          }));
-        }
-      });
+      .then(user => res.status(200).json(new AuthResponse(null, {
+        profile: omit(user, NOT_NEED_FIELDS_PROFILE)
+      })))
+      .catch(err => res.status(200).json(new AuthResponse(err, null)))
   }
 );
+
+router.post(
+  '/me',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const data = req.body;
+    const { username } = req.user;
+
+    if (
+      !UPDATE_USER_FIELDS.every(field => hasIn(data, field))
+      || !isEmpty(omit(data, UPDATE_USER_FIELDS))
+    ) {
+      return res.status(200).json(new AuthResponse(new CustomError(400, 'Bad request'), null));
+    }
+
+    await userModel
+      .updateOne({ username }, data)
+      .then(user => res.status(200).json(new AuthResponse(null, {
+        profile: omit(user, NOT_NEED_FIELDS_PROFILE)
+      })))
+      .catch(err => console.log(err) && res.status(200).json(new AuthResponse(err, null)));
+  }
+)
 
 router.get(
   '/check-authorizated',
@@ -153,13 +181,8 @@ router.post('/check-exists-username', (req, res) => {
 
   userModel
     .findOne({ username })
-    .then(ret => {
-      if (ret.error) {
-        console.log('check exists username error', ret.error);
-        res.status(200).json(new AuthResponse(ret.error, null));
-      }
-
-      if (ret.data) {
+    .then(user => {
+      if (user) {
         res.status(200).json(new AuthResponse(null, { exists: true }));
       } else {
         res.status(200).json(new AuthResponse(null, { exists: false }));
@@ -167,7 +190,7 @@ router.post('/check-exists-username', (req, res) => {
     })
     .catch(err => {
       console.log('check exists username error', err);
-      res.status(200).json(new AuthResponse(new CustomError(500, err), null));
+      res.status(200).json(new AuthResponse(err, null));
     })
 });
 
@@ -187,17 +210,11 @@ router.post(
 
       userModel
         .updateOne({ username }, { password: hashPassword(password) })
-        .then(ret => {
-          if (ret.error) {
-            console.log('error', ret.error);
-            res.status(200).json(new AuthResponse(ret.error, null));
-          } else {
-            res.status(200).json(new AuthResponse(null, omit(ret.data, ['password'])));
-          }
-        })
-        .catch(err => {
-          res.status(200).json(new AuthResponse(new CustomError(500, err), null));
-        })
+        .then(user => res
+          .status(200)
+          .json(new AuthResponse(null, omit(ret.data, NOT_NEED_FIELDS_PROFILE)))
+        )
+        .catch(err => res.status(200).json(new AuthResponse(err, null)))
     }
   }
 );
@@ -205,9 +222,42 @@ router.post(
 router.post(
   '/upload-avatar',
   passport.authenticate('jwt', { session: false }),
+  uploadImageFile,
   (req, res) => {
-    console.log('file', req.body);
-    res.json({ msg: 'file file' });
+    const { username } = req.user;
+    const ggdClient = new GoogleDriveClient({
+      credentialsPath: __dirname + '/../credentials.json',
+      tokenPath: __dirname + '/../token.json',
+      scopes: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.appfolder'
+      ]
+    });
+
+    ggdClient
+      .uploadFile({
+        filename: req.avatarImage,
+        mimeType: MIME_TYPES[req.avatarImageExt],
+        fileUrl: __dirname + '/../public/media/images/users/' + req.avatarImage,
+        folderId: null,
+        toFolder: 'my-caro-online-user-avatars',
+        permissions: [
+          {
+            role: GOOGLE_DRIVE_PERMISSION_ROLE.READER,
+            type: GOOGLE_DRIVE_PERMISSION_TYPE.ANYONE
+          }
+        ]
+      })
+      .then(ret => {
+        userModel
+          .updateOne({ username }, { avatar: ret.downloadUrl, avatar_id: ret.fileId })
+          .then(user => res
+            .status(200)
+            .json(new AuthResponse(null, { profile: omit(user, NOT_NEED_FIELDS_PROFILE) })))
+          .catch(err => res.status(200).json(new AuthResponse(err, null)));
+      })
+      .catch(err => res.status(200).json(new AuthResponse(err, null)));
   }
 );
 

@@ -2,70 +2,53 @@ const { omit, isEmpty } = require('lodash');
 const { hashPassword } = require('../utils/password');
 const { CustomError } = require('../defines/errors');
 const { DBResponse } = require('../defines/responses');
+const {
+	USER_FIELDS,
+	NEW_USER_FIELDS
+} = require('../defines/constants');
 const conn = require('./connection');
 
-const COMMON_FIELDS = ['username', 'password', 'display_name', 'email', 'birthday', 'gender'];
-const FIELDS = [...COMMON_FIELDS, 'google_id', 'facebook_id'];
-
-const findOne = async conditions => {
-	const result = new DBResponse(null, null);
-
-	if (isEmpty(omit(conditions, FIELDS))) {
-		await conn('user')
+const findOne = conditions => new Promise((resolve, reject) => {
+	if (isEmpty(omit(conditions, USER_FIELDS))) {
+		conn('user')
 			.where(conditions)
 			.select()
-			.then(users => users.length > 0 && (result.data = Object.assign({}, users[0])))
-			.catch(err => result.error = new CustomError(500, err));
+			.then(users => resolve(users[0]))
+			.catch(err => reject(err));
 	} else {
-		result.error = new CustomError(400, 'Bad request');
+		reject(new CustomError(400, 'Bad request'));
 	}
+});
 
-	return result;
-}
+const addNew = dataObj => new Promise((resolve, reject) => {
+	if (isEmpty(omit(dataObj, NEW_USER_FIELDS))) {
+		const newData = {
+			...dataObj,
+			password: dataObj.password ? hashPassword(dataObj.password) : null
+		};
 
-const addNew = async dataObj => {
-	const result = new DBResponse(null, null);
+		conn('user')
+			.insert(newData)
+			.then(users => resolve(users[0]))
+			.catch(err => reject(err));
+	} else {
+		reject(new CustomError(400, 'Bad Request'));
+	}
+});
 
-	try {
-		if (isEmpty(omit(dataObj, COMMON_FIELDS))) {
-			const newData = {
-				...dataObj,
-				password: dataObj.password ? hashPassword(dataObj.password) : null
-			};
-
-			await conn('user')
-				.insert(newData)
-				.then(res => result.error = null)
-				.catch(err => result.error = new CustomError(500, err));
-		} else {
-			result.error = new CustomError(400, 'Bad Request');
-		}
-	} catch (err) { console.log(err) };
-
-	return result;
-};
-
-const updateOne = async (conditionsKey, data) => {
-	const result = new DBResponse(null, null);
-
-	await conn('user')
-		.where(conditionsKey)
-		.update(data)
-		.then(async res => {
-			await findOne(conditionsKey)
-				.then(ret => {
-					if (ret.error) {
-						result.error = ret.error;
-					} else {
-						result.data = ret.data;
-					}
-				})
-				.catch(err => result.error = new CustomError(500, err));
-		})
-		.catch(err => result.error = new CustomError(500, err));
-
-	return result;
-};
+const updateOne = (conditionsKey, dataObj) => new Promise((resolve, reject) => {
+	if (isEmpty(omit(dataObj, NEW_USER_FIELDS))) {
+		conn('user')
+			.where(conditionsKey)
+			.update(dataObj, USER_FIELDS)
+			.then(users => {
+				resolve(users[0]);
+			})
+			.catch(err => reject(err));
+	} else {
+		reject(new CustomError(400, 'Bad request'));
+	}
+});
 
 module.exports = {
 	findOne,
