@@ -4,7 +4,8 @@ const { CustomError } = require('../defines/errors');
 const { DBResponse } = require('../defines/responses');
 const {
 	USER_FIELDS,
-	NEW_USER_FIELDS
+	NEW_USER_FIELDS,
+	UPDATABLE_USER_FIELDS
 } = require('../defines/constants');
 const conn = require('./connection');
 
@@ -29,7 +30,11 @@ const addNew = dataObj => new Promise((resolve, reject) => {
 
 		conn('user')
 			.insert(newData)
-			.then(users => resolve(users[0]))
+			.then(() => {
+				findOne({ username: dataObj.username })
+					.then(user => resolve(user))
+					.catch(err => reject(err));
+			})
 			.catch(err => reject(err));
 	} else {
 		reject(new CustomError(400, 'Bad Request'));
@@ -37,12 +42,14 @@ const addNew = dataObj => new Promise((resolve, reject) => {
 });
 
 const updateOne = (conditionsKey, dataObj) => new Promise((resolve, reject) => {
-	if (isEmpty(omit(dataObj, NEW_USER_FIELDS))) {
+	if (isEmpty(omit(dataObj, UPDATABLE_USER_FIELDS))) {
 		conn('user')
 			.where(conditionsKey)
-			.update(dataObj, USER_FIELDS)
-			.then(users => {
-				resolve(users[0]);
+			.update(dataObj)
+			.then(() => {
+				findOne(conditionsKey)
+					.then(user => resolve(user))
+					.catch(err => reject(err));
 			})
 			.catch(err => reject(err));
 	} else {

@@ -2,6 +2,7 @@ const passport = require('passport');
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { omit, hasIn, isEmpty } = require('lodash');
+const fs = require('fs');
 
 const { JWT } = require('../config').PASSPORT;
 const { userModel } = require('../database');
@@ -212,12 +213,39 @@ router.post(
         .updateOne({ username }, { password: hashPassword(password) })
         .then(user => res
           .status(200)
-          .json(new AuthResponse(null, omit(ret.data, NOT_NEED_FIELDS_PROFILE)))
+          .json(new AuthResponse(null, omit(user, NOT_NEED_FIELDS_PROFILE)))
         )
         .catch(err => res.status(200).json(new AuthResponse(err, null)))
     }
   }
 );
+
+router.post(
+  '/check-password',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    const { password } = req.body;
+
+    if (!passport) {
+      return res.status(200).json(new AuthResponse(new CustomError(400, 'Bad request'), null));
+    }
+
+    userModel
+      .findOne({ username: req.user.username })
+      .then(user => {
+        if (!user) {
+          return res.status(200).json(new AuthResponse(new CustomError(401, 'Unauthorizated'), null));
+        }
+
+        res
+          .status(200)
+          .json(new AuthResponse(null, {
+            correct: user.password === hashPassword(password)
+          }));
+      })
+      .catch(err => res.status(200).json(new AuthResponse(new CustomError(500, err), null)));
+  }
+)
 
 router.post(
   '/upload-avatar',
@@ -235,11 +263,17 @@ router.post(
       ]
     });
 
+    const fileUrl = __dirname + '/../public/media/images/users/' + req.avatarImage;
+
+    if (req.user.avatar_id) {
+      ggdClient.deleteFile(req.user.avatar_id).catch(err => console.log(err));
+    }
+
     ggdClient
       .uploadFile({
         filename: req.avatarImage,
         mimeType: MIME_TYPES[req.avatarImageExt],
-        fileUrl: __dirname + '/../public/media/images/users/' + req.avatarImage,
+        fileUrl,
         folderId: null,
         toFolder: 'my-caro-online-user-avatars',
         permissions: [
@@ -250,6 +284,7 @@ router.post(
         ]
       })
       .then(ret => {
+        fs.unlink(fileUrl, () => { });
         userModel
           .updateOne({ username }, { avatar: ret.downloadUrl, avatar_id: ret.fileId })
           .then(user => res
@@ -257,7 +292,7 @@ router.post(
             .json(new AuthResponse(null, { profile: omit(user, NOT_NEED_FIELDS_PROFILE) })))
           .catch(err => res.status(200).json(new AuthResponse(err, null)));
       })
-      .catch(err => res.status(200).json(new AuthResponse(err, null)));
+      .catch(err => console.log(err) && res.status(200).json(new AuthResponse(err, null)));
   }
 );
 

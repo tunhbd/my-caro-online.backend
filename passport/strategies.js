@@ -26,7 +26,7 @@ const useJwtStrategy = () => {
 
     userModel
       .findOne({ username: jwt_payload.username })
-      .then(user => cb(null, omit(user, NEED_TO_REMOVE_FIELDS_TOKEN)))
+      .then(user => cb(null, user))
       .catch(err => cb(err, null));
   }));
 };
@@ -37,7 +37,12 @@ const useLocalStrategy = () => {
     function (username, password, cb) {
       userModel
         .findOne({ username, password: hashPassword(password) })
-        .then(user => cb(null, omit(user, NEED_TO_REMOVE_FIELDS_TOKEN)))
+        .then(user => {
+          if (!user) {
+            return cb(null, null);
+          }
+          cb(null, omit(user, NEED_TO_REMOVE_FIELDS_TOKEN))
+        })
         .catch(err => cb(err, null));
     }
   ));

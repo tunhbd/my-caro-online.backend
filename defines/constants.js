@@ -28,6 +28,18 @@ const USER_FIELDS = [
   'google_id'
 ];
 
+const UPDATABLE_USER_FIELDS = [
+  'password',
+  'email',
+  'gender',
+  'birthday',
+  'display_name',
+  'avatar',
+  'avatar_id',
+  'facebook_id',
+  'google_id'
+]
+
 const NEW_USER_FIELDS = [
   'username',
   'password',
@@ -49,5 +61,6 @@ module.exports = {
   USER_FIELDS,
   NEW_USER_FIELDS,
   UPDATE_USER_FIELDS,
-  NOT_NEED_FIELDS_PROFILE
+  NOT_NEED_FIELDS_PROFILE,
+  UPDATABLE_USER_FIELDS
 }
