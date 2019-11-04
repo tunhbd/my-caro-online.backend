@@ -104,6 +104,7 @@ const useFacebookStrategy = () => {
           facebook_id: profile.id
         })
         .then(user => {
+          console.log('user', user);
           if (user) {
             return cb(null, omit(user, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'google_id']));
           }

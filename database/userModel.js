@@ -22,7 +22,7 @@ const findOne = conditions => new Promise((resolve, reject) => {
 });
 
 const addNew = dataObj => new Promise((resolve, reject) => {
-	if (isEmpty(omit(dataObj, NEW_USER_FIELDS))) {
+	if (isEmpty(omit(dataObj, USER_FIELDS))) {
 		const newData = {
 			...dataObj,
 			password: dataObj.password ? hashPassword(dataObj.password) : null
