@@ -52,10 +52,11 @@ router.get(
   '/facebook/callback',
   passport.authenticate('facebook'),
   (req, res) => {
+    console.log('user', req.user);
     const resData = req.user
       ? new AuthResponse(null, { token: jwt.sign(req.user, JWT.SECRET) })
       : new AuthResponse(null, null)
-    res.send(`
+    res.status(200).send(`
     <html>
       <body onload="onLoad()">
         <script>
