@@ -121,7 +121,10 @@ const useFacebookStrategy = () => {
             .then(user => cb(null, omit(user, [...NEED_TO_REMOVE_FIELDS_TOKEN, 'google_id'])))
             .catch(err => cb(err, null));
         })
-        .catch(err => cb(new CustomError(500, err), null));
+        .catch(err => {
+          console.log(err);
+          cb(new CustomError(500, err), null)
+        });
     }
   ));
 };
