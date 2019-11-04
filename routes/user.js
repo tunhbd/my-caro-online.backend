@@ -20,7 +20,7 @@ const {
   MIME_TYPES,
   GOOGLE_DRIVE_PERMISSION_ROLE,
   GOOGLE_DRIVE_PERMISSION_TYPE
-} = require('../modules/google-drive-client/build/src');
+} = require('google-drive-client/build/src');
 
 router.post('/login', function (req, res, next) {
   passport.authenticate('local', { session: false }, function (err, user, info) {

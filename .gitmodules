@@ -1,3 +1,0 @@
-[submodule "modules/google-drive-client"]
-	path = modules/google-drive-client
-	url = https://github.com/tunhbd/google-drive-api.git
