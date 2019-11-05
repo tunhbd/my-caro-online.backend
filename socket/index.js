@@ -93,7 +93,7 @@ const countFollow = (
   afterCondition
 ) => {
   let count = 1
-  let resultCount = [{ x, y }]
+  let result = [{ x, y }]
   let xx
   let yy
   let blockBefore = false
@@ -105,7 +105,7 @@ const countFollow = (
     if (board[xx][yy]) {
       if (board[xx][yy] === board[x][y]) {
         count += 1
-        resultCount = [...resultCount, { x: xx, y: yy }]
+        result = [...result, { x: xx, y: yy }]
       } else {
         blockBefore = true
         break
@@ -122,7 +122,7 @@ const countFollow = (
     if (board[xx][yy]) {
       if (board[xx][yy] === board[x][y]) {
         count += 1
-        resultCount = [...resultCount, { x: xx, y: yy }]
+        result = [...result, { x: xx, y: yy }]
       } else {
         blockBefore = true
         break
@@ -133,7 +133,7 @@ const countFollow = (
     yy += browseAfterY
   }
 
-  return { count, result: resultCount, blockBefore, blockAfter }
+  return { count, result, blockBefore, blockAfter }
 }
 
 const checkresponse = response => {
@@ -142,7 +142,12 @@ const checkresponse = response => {
 
 const isWinner = (board, x, y) => {
   let response = null
-  let won = false
+  let res = {
+    won: false,
+    result: []
+  }
+  const rowCount = board.length
+  const colCount = board[0] ? board[0].length : 0
 
   response = countFollow(
     board,
@@ -156,7 +161,8 @@ const isWinner = (board, x, y) => {
     xx => xx < rowCount
   )
   if (checkresponse(response)) {
-    won = true
+    res.won = true
+    res.result = response.result
   } else {
     response = countFollow(
       board,
@@ -170,7 +176,8 @@ const isWinner = (board, x, y) => {
       (xx, yy) => yy < colCount
     )
     if (checkresponse(response)) {
-      won = true
+      res.won = true
+      res.result = response.result
     } else {
       response = countFollow(
         board,
@@ -184,7 +191,8 @@ const isWinner = (board, x, y) => {
         (xx, yy) => xx < rowCount && yy < colCount
       )
       if (checkresponse(response)) {
-        won = true
+        res.won = true
+        res.result = response.result
       } else {
         response = countFollow(
           board,
@@ -198,13 +206,33 @@ const isWinner = (board, x, y) => {
           (xx, yy) => xx < rowCount && yy > -1
         )
         if (checkresponse(response)) {
-          won = true
+          res.won = true
+          res.result = response.result
         }
       }
     }
   }
 
-  return won
+  return res
+}
+
+const turnOfComputer = (board, x, y) => {
+  const rowCount = board.length
+  const colCount = board[0] ? board[0].length : 0
+
+  while (true) {
+    const nextX = Math.floor(Math.random() * rowCount)
+    const nextY = Math.floor(Math.random() * colCount)
+
+    if (!board[nextX][nextY]) {
+      board[nextX][nextY] = 'O'
+      return {
+        nextBoard: board,
+        nextX,
+        nextY
+      }
+    }
+  }
 }
 
 const configSocketIO = server => {
@@ -308,28 +336,35 @@ const configSocketIO = server => {
     })
 
     socket.on('next turn', ({ roomId, board, x, y }) => {
+      let res = null
+      console.log(roomId)
       if (!roomId) {
-        if (isWinner(board, x, y)) {
-          socket.to(roomId).emit('next turn', { board, x, y })
-          playGameNamespace.in(roomId).emit('got winner', {
-            id: socket.id
+        res = isWinner(board, x, y)
+        if (res.won) {
+          console.log('got winner')
+          // socket.to(roomId).emit('next turn', { board, x, y })
+          socket.emit('got winner', {
+            id: socket.id,
+            result: res.result
           })
         } else {
+          console.log('next')
           const { nextBoard, nextX, nextY } = turnOfComputer(board, x, y)
+          res = isWinner(nextBoard, nextX, nextY)
+          socket.emit('next turn', { board: nextBoard, x: nextX, y: nextY })
 
-          if (isWinner(nextBoard, nextX, nextY)) {
-            socket.emit('got winner', {})
+          if (res.won) {
+            socket.emit('got winner', { id: 'COMPUTER', result: res.result })
           }
         }
-
-        socket.emit('next turn', { board: nextBoard, x: nextX, y: nextY })
       } else {
-        if (isWinner(board, x, y)) {
+        res = isWinner(board, x, y)
+        socket.to(roomId).emit('next turn', { board, x, y })
+
+        if (res.won) {
           playGameNamespace
             .in(roomId)
-            .emit('got winner', { id: socket.id, board, x, y })
-        } else {
-          socket.to(roomId).emit('next turn', { board, x, y })
+            .emit('got winner', { id: socket.id, result: res.result })
         }
       }
     })
