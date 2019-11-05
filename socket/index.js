@@ -1,97 +1,219 @@
-const socketIO = require('socket.io');
-const uuidv1 = require('uuid/v1');
+const socketIO = require('socket.io')
+const uuidv1 = require('uuid/v1')
 
 class Player {
-  constructor(id, avatar, name) {
-    this.id = id;
-    this.avatar = avatar;
-    this.name = name;
+  constructor (id, avatar, name) {
+    this.id = id
+    this.avatar = avatar
+    this.name = name
     this.ready = false
   }
 }
 
 class Room {
-  constructor({ id, maxCount, players }) {
+  constructor ({ id, maxCount, players }) {
     if (players.length > maxCount) {
-      throw new Error('Number of participants is not greater than maxCount');
+      throw new Error('Number of participants is not greater than maxCount')
     }
 
-    this.id = id;
-    this.maxCount = maxCount;
-    this.players = players;
+    this.id = id
+    this.maxCount = maxCount
+    this.players = players
   }
 
-  readyPlayer(id) {
-    const player = this.players.filter(
-      pl => pl.id === socket.id
-    )[0];
+  readyPlayer (id) {
+    const player = this.players.filter(pl => pl.id === id)[0]
 
     if (player) {
       player.ready = true
     }
   }
 
-  addPlayer(player) {
+  addPlayer (player) {
     if (this.isFull()) {
-      return false;
+      return false
     }
 
-    this.players = [
-      ...this.players,
-      player
-    ];
+    this.players = [...this.players, player]
 
-    return true;
+    return true
   }
 
-  isFull() {
-    return this.players.length === this.maxCount;
+  removePlayer (id) {
+    this.players = this.players.filter(pl => pl.id !== id)
   }
 
-  isReady() {
-    return this.players.every(pl => pl.ready);
+  isFull () {
+    return this.players.length === this.maxCount
+  }
+
+  isReady () {
+    return this.players.every(pl => pl.ready)
   }
 }
 
 class RoomManager {
-  constructor() {
-    this.rooms = [];
+  constructor () {
+    this.rooms = []
   }
 
-  isExistsRoom(roomId) {
-    return this.rooms.some(room => room.id === roomId);
+  isExistsRoom (roomId) {
+    return this.rooms.some(room => room.id === roomId)
   }
 
-  addRoom(room) {
+  addRoom (room) {
     if (this.isExistsRoom(room.id)) {
-      return false;
+      return false
     }
 
-    this.rooms = [
-      ...this.rooms,
-      room
-    ];
+    this.rooms = [...this.rooms, room]
   }
 
-  findFreeRoom() {
-    console.log('find free room', this.rooms);
-    return this.rooms.filter(room => !room.isFull())[0];
+  findFreeRoom () {
+    console.log('find free room', this.rooms)
+    return this.rooms.filter(room => !room.isFull())[0]
   }
 
-  getRoom(id) {
-    return this.rooms.filter(room => room.id === id)[0];
+  getRoom (id) {
+    return this.rooms.filter(room => room.id === id)[0]
   }
 }
 
-const roomManager = new RoomManager();
+const roomManager = new RoomManager()
+
+const countFollow = (
+  board,
+  x,
+  y,
+  browseBeforeX,
+  browseAfterX,
+  browseBeforeY,
+  browseAfterY,
+  beforeCondition,
+  afterCondition
+) => {
+  let count = 1
+  let resultCount = [{ x, y }]
+  let xx
+  let yy
+  let blockBefore = false
+  const blockAfter = false
+
+  xx = x + browseBeforeX
+  yy = y + browseBeforeY
+  while (beforeCondition(xx, yy)) {
+    if (board[xx][yy]) {
+      if (board[xx][yy] === board[x][y]) {
+        count += 1
+        resultCount = [...resultCount, { x: xx, y: yy }]
+      } else {
+        blockBefore = true
+        break
+      }
+    }
+
+    xx += browseBeforeX
+    yy += browseBeforeY
+  }
+
+  xx = x + browseAfterX
+  yy = y + browseAfterY
+  while (afterCondition(xx, yy)) {
+    if (board[xx][yy]) {
+      if (board[xx][yy] === board[x][y]) {
+        count += 1
+        resultCount = [...resultCount, { x: xx, y: yy }]
+      } else {
+        blockBefore = true
+        break
+      }
+    }
+
+    xx += browseAfterX
+    yy += browseAfterY
+  }
+
+  return { count, result: resultCount, blockBefore, blockAfter }
+}
+
+const checkresponse = response => {
+  return response.count >= 5 && (!response.blockBefore || !response.blockAfter)
+}
+
+const isWinner = (board, x, y) => {
+  let response = null
+  let won = false
+
+  response = countFollow(
+    board,
+    x,
+    y,
+    -1,
+    1,
+    0,
+    0,
+    xx => xx > -1,
+    xx => xx < rowCount
+  )
+  if (checkresponse(response)) {
+    won = true
+  } else {
+    response = countFollow(
+      board,
+      x,
+      y,
+      0,
+      0,
+      -1,
+      1,
+      (xx, yy) => yy > -1,
+      (xx, yy) => yy < colCount
+    )
+    if (checkresponse(response)) {
+      won = true
+    } else {
+      response = countFollow(
+        board,
+        x,
+        y,
+        -1,
+        1,
+        -1,
+        1,
+        (xx, yy) => xx > -1 && yy > -1,
+        (xx, yy) => xx < rowCount && yy < colCount
+      )
+      if (checkresponse(response)) {
+        won = true
+      } else {
+        response = countFollow(
+          board,
+          x,
+          y,
+          -1,
+          1,
+          1,
+          -1,
+          (xx, yy) => xx > -1 && yy < colCount,
+          (xx, yy) => xx < rowCount && yy > -1
+        )
+        if (checkresponse(response)) {
+          won = true
+        }
+      }
+    }
+  }
+
+  return won
+}
 
 const configSocketIO = server => {
-  const io = socketIO(server);
-  const playGameNamespace = io.of('/play-game');
+  const io = socketIO(server)
+  const playGameNamespace = io.of('/play-game')
 
   playGameNamespace.on('connection', socket => {
-    console.log('client', socket.id, 'connected to server');
-    socket.emit('welcome to namespace', 'play-game');
+    console.log('client', socket.id, 'connected to server')
+    socket.emit('welcome to namespace', 'play-game')
 
     // play with computer
     // socket.on('play with computer', () => {
@@ -101,86 +223,118 @@ const configSocketIO = server => {
     // play with other player
     socket.on('find player', ({ player }) => {
       console.log('client', socket.id, 'want to find player')
-      let room = roomManager.findFreeRoom();
+      let room = roomManager.findFreeRoom()
 
       if (!room) {
-        console.log('can not find any free room');
-        console.log('create new room');
+        console.log('can not find any free room')
+        console.log('create new room')
         room = new Room({
           id: uuidv1(),
           maxCount: 2,
-          players: [
-            new Player(socket.id, player.avatar, player.name)
-          ]
-        });
-        roomManager.addRoom(room);
-        socket.join(room.id);
-        socket.emit('joined room', { roomId: room.id });
+          players: [new Player(socket.id, player.avatar, player.name)]
+        })
+        roomManager.addRoom(room)
+        socket.join(room.id)
+        socket.emit('joined room', { roomId: room.id })
       } else {
-        console.log('found one free room');
-        console.log('add client to this room');
-        room.addPlayer(
-          new Player(socket.id, player.avatar, player.name)
-        );
-        socket.join(room.id);
-        socket.emit('joined room', { roomId: room.id });
+        console.log('found one free room')
+        console.log('add client to this room')
+        room.addPlayer(new Player(socket.id, player.avatar, player.name))
+        socket.join(room.id)
+        socket.emit('joined room', { roomId: room.id })
         socket.to(room.id).emit('vs player', {
           player: {
             ...room.players[1],
             ready: undefined
           }
-        });
+        })
         socket.emit('vs player', {
           player: {
             ...room.players[0],
             ready: undefined
           }
-        });
-      }
-    });
-
-    socket.on('ready', ({ roomId }) => {
-      const room = roomManager.getRoom(roomId);
-
-      room.readyPlayer(socket.id);
-      socket.to(roomId).emit('player ready');
-      if (room.isReady()) {
-        playGameNamespace.in(roomId).emit('start game', {
-          firstPlayer: room.players[
-            Math.floor(Math.random() * 2)
-          ].id
         })
       }
-    });
+    })
 
-    // socket.on('next turn', ({ roomId, board, x, y }) => {
-    //   if (!roomId) {
-    //     if (isWinner(board, x, y)) {
-    //       socket.emit('got winner', {
-    //         id: socket.id,
-    //         board,
-    //         x,
-    //         y
-    //       });
-    //     } else {
-    //       const { nextBoard, nextX, nextY } = turnOfComputer(board, x, y);
+    socket.on('ready', ({ roomId }) => {
+      const room = roomManager.getRoom(roomId)
 
-    //       if (isWinner(nextBoard, nextX, nextY)) {
-    //         socket.emit('got winner', {})
-    //       }
-    //     }
+      if (room) {
+        room.readyPlayer(socket.id)
+        socket.to(roomId).emit('player ready')
+        if (room.isReady()) {
+          playGameNamespace.in(roomId).emit('start game', {
+            firstPlayer: room.players[Math.floor(Math.random() * 2)].id
+          })
+        }
+      }
+    })
 
-    //     socket.emit('next turn', { board: nextBoard, x: nextX, y: nextY })
-    //   } else {
-    //     if (isWinner(board, x, y)) {
-    //       playGameNamespace.in(roomId).emit('got winner', { id: socket.id, board, x, y });
-    //     } else {
-    //       socket.to(roomId).emit('next turn', { board, x, y });
-    //     }
-    //   }
-    // })
-  });
-};
+    socket.on('leave room', ({ roomId }) => {
+      const room = roomManager.getRoom(roomId)
+
+      if (room) {
+        room.removePlayer(socket.id)
+      }
+    })
+
+    socket.on('chat', ({ roomId, message }) => {
+      socket.to(roomId).emit({ message })
+    })
+
+    socket.on('draw', ({ roomId }) => {
+      socket.to(roomId).emit('draw')
+    })
+
+    socket.on('confirm draw', ({ roomId, confirm }) => {
+      socket.to(roomId).emit('confirm draw', { confirm })
+    })
+
+    socket.on('lose', ({ roomId }) => {
+      socket.to(roomId).emit('lose')
+    })
+
+    socket.on('confirm lose', ({ roomId, confirm }) => {
+      socket.to(roomId).emit('confirm lose', { confirm })
+    })
+
+    socket.on('undo', ({ roomId }) => {
+      socket.to(roomId).emit('undo')
+    })
+
+    socket.on('confirm undo', ({ roomId, confirm }) => {
+      socket.to(roomId).emit('confirm undo', { confirm })
+    })
+
+    socket.on('next turn', ({ roomId, board, x, y }) => {
+      if (!roomId) {
+        if (isWinner(board, x, y)) {
+          socket.to(roomId).emit('next turn', { board, x, y })
+          playGameNamespace.in(roomId).emit('got winner', {
+            id: socket.id
+          })
+        } else {
+          const { nextBoard, nextX, nextY } = turnOfComputer(board, x, y)
+
+          if (isWinner(nextBoard, nextX, nextY)) {
+            socket.emit('got winner', {})
+          }
+        }
+
+        socket.emit('next turn', { board: nextBoard, x: nextX, y: nextY })
+      } else {
+        if (isWinner(board, x, y)) {
+          playGameNamespace
+            .in(roomId)
+            .emit('got winner', { id: socket.id, board, x, y })
+        } else {
+          socket.to(roomId).emit('next turn', { board, x, y })
+        }
+      }
+    })
+  })
+}
 
 module.exports = {
   configSocketIO
