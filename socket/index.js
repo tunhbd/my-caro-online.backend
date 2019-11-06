@@ -299,7 +299,7 @@ const configSocketIO = server => {
       }
     })
 
-    socket.on('leave room', ({ roomId }) => {
+    socket.on('finish match', ({ roomId }) => {
       const room = roomManager.getRoom(roomId)
 
       if (room) {
@@ -308,7 +308,7 @@ const configSocketIO = server => {
     })
 
     socket.on('chat', ({ roomId, message }) => {
-      socket.to(roomId).emit({ message })
+      socket.to(roomId).emit('chat', { message })
     })
 
     socket.on('draw', ({ roomId }) => {
