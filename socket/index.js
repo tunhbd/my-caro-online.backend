@@ -69,6 +69,10 @@ class RoomManager {
     this.rooms = [...this.rooms, room]
   }
 
+  removeRoom (id) {
+    this.rooms = this.rooms.filter(room => room.id !== id)
+  }
+
   findFreeRoom () {
     console.log('find free room', this.rooms)
     return this.rooms.filter(room => !room.isFull())[0]
@@ -300,11 +304,8 @@ const configSocketIO = server => {
     })
 
     socket.on('finish match', ({ roomId }) => {
-      const room = roomManager.getRoom(roomId)
-
-      if (room) {
-        room.removePlayer(socket.id)
-      }
+      // const room = roomManager.getRoom(roomId)
+      roomManager.removeRoom(roomId)
     })
 
     socket.on('chat', ({ roomId, message }) => {
@@ -317,6 +318,9 @@ const configSocketIO = server => {
 
     socket.on('confirm draw', ({ roomId, confirm }) => {
       socket.to(roomId).emit('confirm draw', { confirm })
+      if (confirm) {
+        playGameNamespace.in(roomId).emit('got winner', { id: null })
+      }
     })
 
     socket.on('lose', ({ roomId }) => {
@@ -325,6 +329,9 @@ const configSocketIO = server => {
 
     socket.on('confirm lose', ({ roomId, confirm }) => {
       socket.to(roomId).emit('confirm lose', { confirm })
+      if (confirm) {
+        playGameNamespace.in(roomId).emit('got winner', { id: socket.id })
+      }
     })
 
     socket.on('undo', ({ roomId }) => {
